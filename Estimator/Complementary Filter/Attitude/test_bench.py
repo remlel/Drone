@@ -1,107 +1,6 @@
-"""
-Complementary roll/pitch Filter: 
-1) motor model
-2)synthetic test bench.
-
-Convention: body frame with X forward, Y left, Z up.
-Angles in radians, angular velocities in rad/s, accelerations in m/s².
-All CONFIG parameters are arbitrary values to be calibrated experimentally with hardware.
-"""
-
-from dataclasses import dataclass
-import math
-import random
+from comp_filter_roll_pitch import *
 import matplotlib.pyplot as plt
 import numpy as np
-
-G = 9.81
-
-
-
-@dataclass
-class FilterConfig:
-    integration_method = "euler_angles"  # "approx_small_angles" or "euler_angles"
-    alpha: float = 0.98                         # weight of gyro (Tuning required)
-    gyro_bias: tuple = (0.0, 0.0, 0.0)          # rad/s (Tuning required)
-    accel_bias: tuple = (0.0, 0.0, 0.0)         # m/s² (Tuning required)
-    accel_gate: float = 0.15                    # gating : |‖a‖ - g| / g (Tuning required)
-    dt_max: float = 0.05                        # gating of time steps (Tuning required)
-
-
-
-class ComplementaryFilter:
-    """Estimates roll and pitch angles based on gyro & accelerometer."""
-
-    def __init__(self, config: FilterConfig):
-        self.config = config
-        self.roll = 0.0
-        self.pitch = 0.0
-        self.initialized = False
-
-    @staticmethod
-    def accel_angles(ax, ay, az):
-        """Computing roll & pitch angles / Assumption: drone is at rest."""
-        roll = math.atan2(ay, az)
-        pitch = math.atan2(-ax, math.sqrt(ay**2 + az**2))
-        return roll, pitch
-
-    def compute_gyro_approx_angles(self, gx, gy, dt):
-        """Approximation small angles : drone rotative velocities ~ Euler velocities."""
-        roll_gyro = self.roll + gx * dt
-        pitch_gyro = self.pitch + gy * dt
-        return roll_gyro, pitch_gyro
-
-    def compute_gyro_euler_angles(self, gx, gy, gz, dt):
-        """Computing Euler angles derivative based on drone rotative velocities."""
-        roll_rate = gx + gy * math.sin(self.roll)*math.tan(self.pitch) + gz * math.cos(self.roll)*math.tan(self.pitch)
-        pitch_rate = gy * math.cos(self.roll) - gz * math.sin(self.roll)
-        roll_gyro = self.roll + roll_rate * dt
-        pitch_gyro = self.pitch + pitch_rate * dt
-        return roll_gyro, pitch_gyro
-
-    def update(self, gyro, accel, dt):
-        """gyro = (gx, gy, gz) rad/s ; accel = (ax, ay, az) m/s² ; dt in s"""
-
-        # Refusing update if time step unconsistent
-        if dt <= 0.0 or dt > self.config.dt_max:
-            return self.roll, self.pitch
-
-        # Estimating real rotational speeds and accelerations by removing bias of sensors 
-        gx, gy, gz = (g - b for g, b in zip(gyro, self.config.gyro_bias))
-        ax, ay, az = (a - b for a, b in zip(accel, self.config.accel_bias))
-
-        roll_acc, pitch_acc = self.accel_angles(ax, ay, az)
-
-        # Initialization with accelerometer (drone assumed steady => measurements reliable)
-        if not self.initialized:
-            self.roll, self.pitch = roll_acc, pitch_acc
-            self.initialized = True
-            return self.roll, self.pitch
-
-        # Prediction with gyro integration
-        if self.config.integration_method == "approx_small_angles":
-            roll_gyro, pitch_gyro = self.compute_gyro_approx_angles(gx, gy, dt)
-        elif self.config.integration_method == "euler_angles":
-            roll_gyro, pitch_gyro = self.compute_gyro_euler_angles(gx, gy, gz, dt)
-        else:
-            raise ValueError(f"Unknown gyro integration method: {self.config.integration_method}")
-        
-
-        # Accelerometer gating : checking if total acceleration close to g (rejecting influence of dynamics)
-        norm = math.sqrt(ax * ax + ay * ay + az * az)
-        trust_acc = abs(norm - G) / G < self.config.accel_gate
-
-        if trust_acc:
-            a = self.config.alpha
-            self.roll = a * roll_gyro + (1 - a) * roll_acc
-            self.pitch = a * pitch_gyro + (1 - a) * pitch_acc
-        else:
-            # In case of high dynamics, relying on gyro only
-            self.roll, self.pitch = roll_gyro, pitch_gyro
-        
-        return self.roll, self.pitch
-
-
 
 #-----------------| Test Bench |-----------------#
 
@@ -154,12 +53,12 @@ def simulate(duration=20.0, fs=200.0, seed=0, alpha=0.98, method="euler_angles",
                 r + b_g[2] + rnd.gauss(0, sig_gyro))
         
         # Specific force measured at rest: projected in the local drone reference frame
-        ax = -G * math.sin(pitch)
-        ay = G * math.sin(roll) * math.cos(pitch)
-        az = G * math.cos(roll) * math.cos(pitch)
-        accel = (ax + b_a[0] + rnd.gauss(0, sig_acc),
-                 ay + b_a[1] + rnd.gauss(0, sig_acc),
-                 az + b_a[2] + rnd.gauss(0, sig_acc))
+        au = -G * math.sin(pitch)
+        av = G * math.sin(roll) * math.cos(pitch)
+        aw = G * math.cos(roll) * math.cos(pitch)
+        accel = (au + b_a[0] + rnd.gauss(0, sig_acc),
+                 av + b_a[1] + rnd.gauss(0, sig_acc),
+                 aw + b_a[2] + rnd.gauss(0, sig_acc))
 
         roll_est, pitch_est = compfilter.update(gyro, accel, dt)
         roll_gyro_only += gyro[0] * dt

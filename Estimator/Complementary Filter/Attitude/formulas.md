@@ -1,4 +1,4 @@
-# Complementary filter (roll / pitch)
+# Complementary Attitude Filter (roll / pitch)
 
 Attitude estimation from a gyroscope and an accelerometer. Yaw is not estimated.
 
@@ -120,7 +120,28 @@ $$\tau^* = \left(\frac{\sigma_\theta^2\,dt}{4\,b^2}\right)^{1/3}$$
 - Larger gyro bias gives smaller $\tau^*$. Noisier accelerometer or better gyro gives larger $\tau^*$.
 - Compensating $\mathbf{b}_g$ (calibration) moves the optimum toward $\alpha \to 1$.
 
-## 8. Sidebar: why not the gyro alone
+## 8. Accelerometer gating
+
+The accelerometer only measures gravity when the vehicle is not accelerating. Under linear acceleration (or free fall), $\|\mathbf{a}\|$ departs from $g$ and the accelerometer-based angles become unreliable. Let
+
+$$\rho = \frac{\|\mathbf{a}\|}{g}$$
+
+and let `accel_gate` $= 1 + \varepsilon$ be the tolerated deviation. Instead of a binary accept/reject rule, the gyro weight is blended continuously:
+
+$$a = \alpha + (1-\alpha)\,\mathrm{clip}\!\left(\frac{|\rho - 1|}{\varepsilon},\,0,\,1\right)$$
+
+$$\theta = a\,\theta_{\text{gyro}} + (1-a)\,\theta_{\text{acc}}$$
+
+- $\rho = 1$: nominal $\alpha$ (see section 7).
+- $|\rho - 1| \ge \varepsilon$: pure gyro integration ($a = 1$), so the estimate is continuous at the gate (no jumps).
+- The test is symmetric around $\rho = 1$: free fall ($\rho < 1$) is rejected like strong acceleration ($\rho > 1$).
+
+Tuning notes:
+
+- $\varepsilon$ must be larger than the vibration-induced fluctuation of $\rho$ in hover, otherwise the accelerometer is rejected permanently. Measure the standard deviation of $\rho$ on the ground (motors on) and in hover, and set $\varepsilon$ to a few standard deviations.
+- If vibrations are significant, low-pass $\|\mathbf{a}\|$ before computing $\rho$.
+
+## 9. Sidebar: why not the gyro alone
 
 Pure integration of the gyro:
 
@@ -136,7 +157,7 @@ $$\theta_{gyro}(t) = \theta_0 + \int_0^t (\omega + b + n_g)\,d\tau' = \theta(t) 
 
 The filter takes the best of each: high frequencies from the gyro, low frequencies from the accelerometer.
 
-## 9. Algorithm (one step)
+## 10. Algorithm (one step)
 
 1. Reject the step if $dt \le 0$ or $dt > dt_{max}$.
 2. Calibrate: $\boldsymbol{\omega}_c = \boldsymbol{\omega}_m - \hat{\mathbf{b}}_g$, $\mathbf{f}_c = \mathbf{f}_m - \hat{\mathbf{b}}_a$.

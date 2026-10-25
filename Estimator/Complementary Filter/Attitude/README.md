@@ -4,7 +4,6 @@ Attitude (roll, pitch) estimation for a drone from a gyroscope and an accelerome
 Implemented in Python and validated in simulation. 
 
 Yaw is not estimated: with only a gyroscope and an accelerometer it is unobservable (gravity gives no heading reference, and the integrated gyro drifts without bound), and our application does not require it.
-Altitude is independent of this filter: it will come from the barometer alone (calibrated against a ground reference), not from the attitude estimate.
 
 Theory and equations: see [`formulas.md`](formulas.md).
 
@@ -20,15 +19,11 @@ angle = alpha * (angle + gyro_rate * dt) + (1 - alpha) * angle_from_acceleromete
 
 ## Code
 
-Everything lives in a single file, `complementary_filter.py`, organized in three parts:
-
-| Component | Type | Role |
-|---|---|---|
-| `FilterConfig` | dataclass | Filter settings: `alpha`, sensor biases, accelerometer gating threshold, `dt_max`, gyro integration method (`approx_small_angles` or `euler_angles`) |
-| `ComplementaryFilter` | class | The filter engine: `update(gyro, accel, dt)` returns the estimated roll and pitch |
-| `simulate`, `compare_methods` | functions | Simulation on a motion we define ourselves (sinusoidal roll/pitch, optional yaw rate), with simulated sensor noise and biases. `simulate`: filter vs gyro alone. `compare_methods`: small-angle approximation vs exact Euler kinematics |
-
-Run with `python complementary_filter.py`.
+| File | Component | Type | Role |
+|---|---|---|---|
+| `comp_filter_roll_pitch.py` | `FilterConfig` | dataclass | Filter settings: `alpha`, sensor biases, accelerometer gating threshold, `dt_max`, gyro integration method (`approx_small_angles` or `euler_angles`) |
+| `comp_filter_roll_pitch.py` | `ComplementaryFilter` | class | The filter engine: `update(gyro, accel, dt)` returns the estimated roll and pitch |
+| `test_bench.py` | `simulate`, `compare_methods` | functions | Simulation on a motion we define ourselves (sinusoidal roll/pitch, optional yaw rate), with simulated sensor noise and biases. `simulate`: filter vs gyro alone. `compare_methods`: small-angle approximation vs exact Euler kinematics |
 
 ## Results
 
