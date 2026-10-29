@@ -36,7 +36,7 @@ $$a^* = K_p\, e + K_i \int e \, dt - K_d\, \hat v$$
 
 $$T = m\,(a^* + g), \qquad 0 \le T \le T_{max}$$
 
-With this conversion, the vertical dynamics $m\,\ddot z = T - m\,g$ reduce to $\ddot z = a^*$: a pure double integrator, independent of the mass. Without the integral term and for a constant $z^*$, the closed loop is a second-order system:
+With this conversion, the vertical dynamics $`m \ddot z = T - m g`$ reduce to $`\ddot z = a^{\ast}`$: a pure double integrator, independent of the mass. Without the integral term and for a constant $`z^{\ast}`$, the closed loop is a second-order system:
 
 $$\ddot z + K_d\, \dot z + K_p\, z = K_p\, z^*, \qquad \omega_n = \sqrt{K_p}, \qquad \zeta = \frac{K_d}{2\sqrt{K_p}}$$
 
@@ -55,7 +55,7 @@ $$z_{k+1} = z_k + v_k\,\Delta t + \tfrac{1}{2}\,a\,\Delta t^2, \qquad v_{k+1} = 
   The ground is a floor: on the ground with a thrust lower than the weight, the drone stays at rest.
 - **Motors**: the thrust command is saturated in $[0, T_{max}]$, then follows a first-order lag of time constant $\tau$:
 
-$$\tau\,\dot T_{real} = T_{cmd} - T_{real}$$
+$$\tau\dot T_{real} = T_{cmd} - T_{real}$$
 
   discretized exactly as $T_{real,k+1} = T_{real,k} + \left(1 - e^{-\Delta t/\tau}\right)\left(T_{cmd} - T_{real,k}\right)$. The motors are off at the start.
 - **Sensors** (implemented, not used in the results below): accelerometer (specific force along the vertical axis, $+g$ at rest) and barometer, with white noise.
@@ -75,7 +75,7 @@ Configuration used: $m = 1$ kg, $T_{max} = 20$ N, $\tau = 50$ ms, $\Delta t = 5$
 | Altitude at 12 s | 2.03 m |
 | Peak thrust | 10.4 N (the saturation is never reached) |
 
-- **Ramp lag**: while climbing at constant speed, the D term brakes, which leaves a steady error $K_d\,\dot z^*/K_p = 2.8 \times 0.5 / 4 = 0.35$ m. Feeding the reference speed forward would remove it.
+- **Ramp lag**: while climbing at constant speed, the D term brakes, which leaves a steady error $K_d\dot z^*/K_p = 2.8 \times 0.5 / 4 = 0.35$ m. Feeding the reference speed forward would remove it.
 - **Overshoot**: it comes from the integral term, which charges during this lag. Lowering $K_i$ reduces it: $K_i = 0.5$ gives 0.17 m and $K_i = 0.2$ gives 0.09 m, at the price of a slower final convergence.
 
 ## 5. Assumptions
